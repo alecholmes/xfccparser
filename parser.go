@@ -18,7 +18,7 @@ type ClientCert struct {
 	Hash    string
 	Cert    string
 	Chain   string
-	Subject pkix.Name
+	Subject *pkix.Name
 	URI     string
 	DNS     []string
 }
@@ -70,13 +70,17 @@ func ParseXFCCHeader(header string) ([]*ClientCert, error) {
 }
 
 // ParseSubject parses the subject string that is parse of the x-forwarded-client-cert header
-func ParseSubject(subject string) (pkix.Name, error) {
-	group := &subjectFields{}
-	if err := subjectParser.ParseString(subject, group); err != nil {
-		return pkix.Name{}, fmt.Errorf("invalid subject: %v", err)
+func ParseSubject(subject string) (*pkix.Name, error) {
+	if subject == "" {
+		return nil, nil
 	}
 
-	name := pkix.Name{}
+	group := &subjectFields{}
+	if err := subjectParser.ParseString(subject, group); err != nil {
+		return nil, fmt.Errorf("invalid subject: %v", err)
+	}
+
+	name := &pkix.Name{}
 	for _, field := range group.Fields {
 		switch field.Key {
 		case "C":
@@ -98,7 +102,7 @@ func ParseSubject(subject string) (pkix.Name, error) {
 		case "POSTALCODE":
 			name.PostalCode = append(name.PostalCode, field.Value)
 		default:
-			return pkix.Name{}, fmt.Errorf("unknown subject DN `%s`", field.Key)
+			return nil, fmt.Errorf("unknown subject DN `%s`", field.Key)
 		}
 	}
 

@@ -24,7 +24,7 @@ func TestParseXFCCHeader(t *testing.T) {
 				{
 					Hash: "hash",
 					Cert: `-----BEGIN%20CERTIFICATE-----%0cert%0A-----END%20CERTIFICATE-----%0A`,
-					Subject: pkix.Name{
+					Subject: &pkix.Name{
 						CommonName:         "hello",
 						OrganizationalUnit: []string{"hello"},
 						Organization:       []string{"Acme, Inc."},
