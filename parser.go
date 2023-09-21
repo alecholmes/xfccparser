@@ -4,7 +4,7 @@ import (
 	"crypto/x509/pkix"
 	"fmt"
 
-	"github.com/alecthomas/participle"
+	"github.com/alecthomas/participle/v2"
 )
 
 const (
@@ -75,8 +75,8 @@ func ParseSubject(subject string) (*pkix.Name, error) {
 		return nil, nil
 	}
 
-	group := &subjectFields{}
-	if err := subjectParser.ParseString(subject, group); err != nil {
+	group, err := subjectParser.ParseString("", subject)
+	if err != nil {
 		return nil, fmt.Errorf("invalid subject: %v", err)
 	}
 
@@ -114,8 +114,8 @@ func parseRawXFCCHeader(header string) (*certs, error) {
 	if header == "" {
 		return &certs{}, nil
 	}
-	groups := &certs{}
-	if err := parser.ParseString(header, groups); err != nil {
+	groups, err := parser.ParseString("", header)
+	if err != nil {
 		return nil, fmt.Errorf("invalid header format: %v", err)
 	}
 
@@ -136,10 +136,10 @@ type field struct {
 	Value string `parser:"(@String)?"`
 }
 
-var parser = participle.MustBuild(&certs{}, participle.Lexer(&xfccDefinition{}))
+var parser = participle.MustBuild[certs](participle.Lexer(&xfccDefinition{}))
 
 type subjectFields struct {
 	Fields []field `parser:"(@@ ( ',' @@ )* )?"`
 }
 
-var subjectParser = participle.MustBuild(&subjectFields{}, participle.Lexer(&xfccDefinition{}))
+var subjectParser = participle.MustBuild[subjectFields](participle.Lexer(&xfccDefinition{}))

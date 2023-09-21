@@ -60,3 +60,45 @@ func TestParseXFCCHeader(t *testing.T) {
 		})
 	}
 }
+
+func TestParseSubject(t *testing.T) {
+	testCases := []struct {
+		subject string
+		name    *pkix.Name
+		err     bool
+	}{
+		{
+			subject: "",
+			name:    nil,
+			err:     false,
+		},
+		{
+			subject: "C=US,O=Test Inc,CN=test.com",
+			name: &pkix.Name{
+				Country:      []string{"US"},
+				Organization: []string{"Test Inc"},
+				CommonName:   "test.com",
+			},
+			err: false,
+		},
+
+		{subject: `C`, err: true},
+		{subject: `C=`, err: true},
+		{subject: `unknown=hello`, err: true},
+		{subject: `CN="random"`, err: true},
+		{subject: `CN="random=hello"`, err: true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.subject, func(t *testing.T) {
+			name, err := ParseSubject(tc.subject)
+			if tc.err {
+				assert.Error(t, err)
+				assert.Empty(t, name)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.name, name)
+			}
+		})
+	}
+}

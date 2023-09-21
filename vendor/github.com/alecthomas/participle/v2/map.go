@@ -1,12 +1,11 @@
 package participle
 
 import (
-	"errors"
 	"io"
 	"strconv"
 	"strings"
 
-	"github.com/alecthomas/participle/lexer"
+	"github.com/alecthomas/participle/v2/lexer"
 )
 
 type mapperByToken struct {
@@ -14,12 +13,7 @@ type mapperByToken struct {
 	mapper  Mapper
 }
 
-// DropToken can be returned by a Mapper to remove a token from the stream.
-var DropToken = errors.New("drop token") // nolint: golint
-
 // Mapper function for mutating tokens before being applied to the AST.
-//
-// If the Mapper func returns an error of DropToken, the token will be removed from the stream.
 type Mapper func(token lexer.Token) (lexer.Token, error)
 
 // Map is an Option that configures the Parser to apply a mapping function to each Token from the lexer.
@@ -28,7 +22,7 @@ type Mapper func(token lexer.Token) (lexer.Token, error)
 //
 // "symbols" specifies the token symbols that the Mapper will be applied to. If empty, all tokens will be mapped.
 func Map(mapper Mapper, symbols ...string) Option {
-	return func(p *Parser) error {
+	return func(p *parserOptions) error {
 		p.mappers = append(p.mappers, mapperByToken{
 			mapper:  mapper,
 			symbols: symbols,
@@ -47,7 +41,7 @@ func Unquote(types ...string) Option {
 	return Map(func(t lexer.Token) (lexer.Token, error) {
 		value, err := unquote(t.Value)
 		if err != nil {
-			return t, lexer.Errorf(t.Pos, "invalid quoted string %q: %s", t.Value, err.Error())
+			return t, Errorf(t.Pos, "invalid quoted string %q: %s", t.Value, err.Error())
 		}
 		t.Value = value
 		return t, nil
@@ -79,23 +73,28 @@ func Upper(types ...string) Option {
 
 // Elide drops tokens of the specified types.
 func Elide(types ...string) Option {
-	return Map(func(token lexer.Token) (lexer.Token, error) {
-		return lexer.Token{}, DropToken
-	}, types...)
+	return func(p *parserOptions) error {
+		p.elide = append(p.elide, types...)
+		return nil
+	}
 }
 
 // Apply a Mapping to all tokens coming out of a Lexer.
 type mappingLexerDef struct {
-	lexer.Definition
+	l      lexer.Definition
 	mapper Mapper
 }
 
-func (m *mappingLexerDef) Lex(r io.Reader) (lexer.Lexer, error) {
-	lexer, err := m.Definition.Lex(r)
+var _ lexer.Definition = &mappingLexerDef{}
+
+func (m *mappingLexerDef) Symbols() map[string]lexer.TokenType { return m.l.Symbols() }
+
+func (m *mappingLexerDef) Lex(filename string, r io.Reader) (lexer.Lexer, error) {
+	l, err := m.l.Lex(filename, r)
 	if err != nil {
 		return nil, err
 	}
-	return &mappingLexer{lexer, m.mapper}, nil
+	return &mappingLexer{l, m.mapper}, nil
 }
 
 type mappingLexer struct {
@@ -104,15 +103,9 @@ type mappingLexer struct {
 }
 
 func (m *mappingLexer) Next() (lexer.Token, error) {
-	for {
-		t, err := m.Lexer.Next()
-		if err != nil {
-			return t, err
-		}
-		t, err = m.mapper(t)
-		if err == DropToken {
-			continue
-		}
+	t, err := m.Lexer.Next()
+	if err != nil {
 		return t, err
 	}
+	return m.mapper(t)
 }
