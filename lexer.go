@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/alecthomas/participle/lexer"
+	"github.com/alecthomas/participle/v2/lexer"
 )
 
 type xfccDefinition struct {
@@ -15,15 +15,15 @@ type xfccDefinition struct {
 
 var _ lexer.Definition = &xfccDefinition{}
 
-func (x *xfccDefinition) Lex(reader io.Reader) (lexer.Lexer, error) {
+func (x *xfccDefinition) Lex(_ string, reader io.Reader) (lexer.Lexer, error) {
 	return &xfccLexer{
 		reader:     bufio.NewReader(reader),
 		separators: "=;,",
 	}, nil
 }
 
-func (x *xfccDefinition) Symbols() map[string]rune {
-	return map[string]rune{
+func (x *xfccDefinition) Symbols() map[string]lexer.TokenType {
+	return map[string]lexer.TokenType{
 		"EOF":    tokenEOF,
 		"String": tokString,
 		"Char":   tokChar,
@@ -31,9 +31,9 @@ func (x *xfccDefinition) Symbols() map[string]rune {
 }
 
 var (
-	tokenEOF  = rune(0)
-	tokString = rune(1)
-	tokChar   = rune(2)
+	tokenEOF  = lexer.TokenType(0)
+	tokString = lexer.TokenType(1)
+	tokChar   = lexer.TokenType(2)
 )
 
 type xfccLexer struct {
@@ -51,7 +51,7 @@ func (x *xfccLexer) Next() (lexer.Token, error) {
 	quoting := false
 	escaping := false
 
-	token := func(tokenType rune) lexer.Token {
+	token := func(tokenType lexer.TokenType) lexer.Token {
 		tok := lexer.Token{
 			Type:  tokenType,
 			Value: x.buf.String(),

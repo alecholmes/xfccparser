@@ -3,11 +3,15 @@ package lexer
 import (
 	"fmt"
 	"io"
+	"strings"
+	"unicode/utf8"
 )
+
+type TokenType int
 
 const (
 	// EOF represents an end of file.
-	EOF rune = -(iota + 1)
+	EOF TokenType = -(iota + 1)
 )
 
 // EOFToken creates a new EOF token at the given position.
@@ -15,14 +19,26 @@ func EOFToken(pos Position) Token {
 	return Token{Type: EOF, Pos: pos}
 }
 
-// Definition provides the parser with metadata for a lexer.
+// Definition is the main entry point for lexing.
 type Definition interface {
-	// Lex an io.Reader.
-	Lex(io.Reader) (Lexer, error)
 	// Symbols returns a map of symbolic names to the corresponding pseudo-runes for those symbols.
 	// This is the same approach as used by text/scanner. For example, "EOF" might have the rune
 	// value of -1, "Ident" might be -2, and so on.
-	Symbols() map[string]rune
+	Symbols() map[string]TokenType
+	// Lex an io.Reader.
+	Lex(filename string, r io.Reader) (Lexer, error)
+}
+
+// StringDefinition is an optional interface lexer Definition's can implement
+// to offer a fast path for lexing strings.
+type StringDefinition interface {
+	LexString(filename string, input string) (Lexer, error)
+}
+
+// BytesDefinition is an optional interface lexer Definition's can implement
+// to offer a fast path for lexing byte slices.
+type BytesDefinition interface {
+	LexBytes(filename string, input []byte) (Lexer, error)
 }
 
 // A Lexer returns tokens from a source.
@@ -32,9 +48,10 @@ type Lexer interface {
 }
 
 // SymbolsByRune returns a map of lexer symbol names keyed by rune.
-func SymbolsByRune(def Definition) map[rune]string {
-	out := map[rune]string{}
-	for s, r := range def.Symbols() {
+func SymbolsByRune(def Definition) map[TokenType]string {
+	symbols := def.Symbols()
+	out := make(map[TokenType]string, len(symbols))
+	for s, r := range symbols {
 		out[r] = s
 	}
 	return out
@@ -53,7 +70,7 @@ func NameOfReader(r interface{}) string {
 //
 // eg.
 //
-// 		lex = lexer.Must(lexer.Build(`Symbol = "symbol" .`))
+//	lex = lexer.Must(lexer.Build(`Symbol = "symbol" .`))
 func Must(def Definition, err error) Definition {
 	if err != nil {
 		panic(err)
@@ -63,7 +80,7 @@ func Must(def Definition, err error) Definition {
 
 // ConsumeAll reads all tokens from a Lexer.
 func ConsumeAll(lexer Lexer) ([]Token, error) {
-	tokens := []Token{}
+	tokens := make([]Token, 0, 1024)
 	for {
 		token, err := lexer.Next()
 		if err != nil {
@@ -84,6 +101,33 @@ type Position struct {
 	Column   int
 }
 
+// Advance the Position based on the number of characters and newlines in "span".
+func (p *Position) Advance(span string) {
+	p.Offset += len(span)
+	lines := strings.Count(span, "\n")
+	p.Line += lines
+	// Update column.
+	if lines == 0 {
+		p.Column += utf8.RuneCountInString(span)
+	} else {
+		p.Column = utf8.RuneCountInString(span[strings.LastIndex(span, "\n"):])
+	}
+}
+
+// Add returns a new Position that is the sum of this position and "pos".
+//
+// This is useful when parsing values from a parent grammar.
+func (p Position) Add(pos Position) Position {
+	p.Line += pos.Line - 1
+	if pos.Line > 1 {
+		p.Column = pos.Column
+	} else {
+		p.Column += pos.Column - 1
+	}
+	p.Offset += pos.Offset
+	return p
+}
+
 func (p Position) GoString() string {
 	return fmt.Sprintf("Position{Filename: %q, Offset: %d, Line: %d, Column: %d}",
 		p.Filename, p.Offset, p.Line, p.Column)
@@ -100,14 +144,9 @@ func (p Position) String() string {
 // A Token returned by a Lexer.
 type Token struct {
 	// Type of token. This is the value keyed by symbol as returned by Definition.Symbols().
-	Type  rune
+	Type  TokenType
 	Value string
 	Pos   Position
-}
-
-// RuneToken represents a rune as a Token.
-func RuneToken(r rune) Token {
-	return Token{Type: r, Value: string(r)}
 }
 
 // EOF returns true if this Token is an EOF token.
@@ -132,9 +171,9 @@ func (t Token) GoString() string {
 // MakeSymbolTable builds a lookup table for checking token ID existence.
 //
 // For each symbolic name in "types", the returned map will contain the corresponding token ID as a key.
-func MakeSymbolTable(def Definition, types ...string) (map[rune]bool, error) {
+func MakeSymbolTable(def Definition, types ...string) (map[TokenType]bool, error) {
 	symbols := def.Symbols()
-	table := map[rune]bool{}
+	table := make(map[TokenType]bool, len(types))
 	for _, symbol := range types {
 		rn, ok := symbols[symbol]
 		if !ok {

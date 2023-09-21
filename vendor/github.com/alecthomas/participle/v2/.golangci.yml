@@ -10,7 +10,6 @@ linters:
   enable-all: true
   disable:
     - maligned
-    - megacheck
     - lll
     - gocyclo
     - gochecknoglobals
@@ -18,6 +17,41 @@ linters:
     - whitespace
     - godox
     - funlen
+    - gocognit
+    - gomnd
+    - goerr113
+    - godot
+    - nestif
+    - testpackage
+    - nolintlint
+    - exhaustivestruct
+    - wrapcheck
+    - gci
+    - gofumpt
+    - gocritic
+    - nlreturn
+    - errorlint
+    - nakedret
+    - forbidigo
+    - revive
+    - cyclop
+    - ifshort
+    - paralleltest
+    - interfacer
+    - scopelint
+    - golint
+    - wastedassign
+    - forcetypeassert
+    - gomoddirectives
+    - varnamelen
+    - exhaustruct
+    - ireturn
+    - nonamedreturns
+    - errname
+    - nilnil
+    - maintidx
+    - unused # Does not work with type parameters
+    - dupword
 
 linters-settings:
   govet:
@@ -29,6 +63,8 @@ linters-settings:
   goconst:
     min-len: 8
     min-occurrences: 3
+  exhaustive:
+    default-signifies-exhaustive: true
 
 issues:
   max-per-linter: 0
@@ -36,11 +72,11 @@ issues:
   exclude-use-default: false
   exclude:
     # Captured by errcheck.
-    - '^(G104|G204):'
+    - '^(G104|G204|G307):'
     # Very commonly not checked.
     - 'Error return value of .(.*\.Help|.*\.MarkFlagRequired|(os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv). is not checked'
     - 'exported method `(.*\.MarshalJSON|.*\.UnmarshalJSON|.*\.EntityURN|.*\.GoString|.*\.Pos)` should have comment or be unexported'
-    - 'composite literal uses unkeyed fields'
+    - 'uses unkeyed fields'
     - 'declaration of "err" shadows declaration'
     - 'bad syntax for struct tag key'
     - 'bad syntax for struct tag pair'
