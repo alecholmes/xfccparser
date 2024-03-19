@@ -19,7 +19,7 @@ func TestParseXFCCHeader(t *testing.T) {
 			certs:  nil,
 		},
 		{
-			header: `Hash=hash;Cert="-----BEGIN%20CERTIFICATE-----%0cert%0A-----END%20CERTIFICATE-----%0A";Subject="CN=hello,OU=hello,O=Acme\, Inc.";URI=;DNS=hello.west.example.com;DNS=hello.east.example.com,By=spiffe://mesh.example.com/ns/hellons/sa/hellosa;Hash=again;Subject="";URI=spiffe://mesh.example.com/ns/otherns/sa/othersa`,
+			header: `Hash=hash;Cert="-----BEGIN%20CERTIFICATE-----%0cert%0A-----END%20CERTIFICATE-----%0A";Subject="CN=hello,OU=hello,O=Acme\, Inc.";DNS=hello.west.example.com;DNS=hello.east.example.com,By=spiffe://mesh.example.com/ns/hellons/sa/hellosa;Hash=again;Subject="";URI=spiffe://mesh.example.com/ns/otherns/sa/othersa;URI=spiffe://mesh.example.com/ns/otherns/sa2/othersa2`,
 			certs: []*ClientCert{
 				{
 					Hash: "hash",
@@ -34,7 +34,7 @@ func TestParseXFCCHeader(t *testing.T) {
 				{
 					Hash: "again",
 					By:   "spiffe://mesh.example.com/ns/hellons/sa/hellosa",
-					URI:  "spiffe://mesh.example.com/ns/otherns/sa/othersa",
+					URI:  []string{"spiffe://mesh.example.com/ns/otherns/sa/othersa", "spiffe://mesh.example.com/ns/otherns/sa2/othersa2"},
 				},
 			},
 		},
