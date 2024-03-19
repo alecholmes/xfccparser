@@ -19,7 +19,7 @@ type ClientCert struct {
 	Cert    string
 	Chain   string
 	Subject *pkix.Name
-	URI     string
+	URI     []string
 	DNS     []string
 }
 
@@ -56,7 +56,7 @@ func ParseXFCCHeader(header string) ([]*ClientCert, error) {
 				}
 				cert.Subject = subject
 			case "URI":
-				cert.URI = field.Value
+				cert.URI = append(cert.URI, field.Value)
 			case "DNS":
 				cert.DNS = append(cert.DNS, field.Value)
 			default:
