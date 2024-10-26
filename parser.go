@@ -14,13 +14,14 @@ const (
 
 // ClientCert is a client certificate passed to Envoy
 type ClientCert struct {
-	By      string
-	Hash    string
-	Cert    string
-	Chain   string
-	Subject *pkix.Name
-	URI     []string
-	DNS     []string
+	By         string
+	Hash       string
+	Cert       string
+	Chain      string
+	Subject    *pkix.Name
+	SubjectRaw string
+	URI        []string
+	DNS        []string
 }
 
 // ParseXFCCHeader parses an x-forwarded-client-cert header and returns the list of certificates present.
@@ -55,6 +56,7 @@ func ParseXFCCHeader(header string) ([]*ClientCert, error) {
 					return nil, fmt.Errorf("invalid subject in client cert %d: %v", i, err)
 				}
 				cert.Subject = subject
+				cert.SubjectRaw = field.Value
 			case "URI":
 				cert.URI = append(cert.URI, field.Value)
 			case "DNS":
