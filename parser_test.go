@@ -29,6 +29,7 @@ func TestParseXFCCHeader(t *testing.T) {
 						OrganizationalUnit: []string{"hello"},
 						Organization:       []string{"Acme, Inc."},
 					},
+					SubjectRaw: `CN=hello,OU=hello,O=Acme\, Inc.`,
 					DNS: []string{"hello.west.example.com", "hello.east.example.com"},
 				},
 				{
